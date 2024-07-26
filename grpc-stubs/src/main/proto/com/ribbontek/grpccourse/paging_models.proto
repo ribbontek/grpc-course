@@ -1,0 +1,33 @@
+syntax = "proto3";
+import "google/protobuf/any.proto";
+
+package com.ribbontek.grpccourse;
+
+option java_multiple_files = true;
+option java_package = "com.ribbontek.grpccourse";
+
+enum Direction {
+  ASC = 0; DESC = 1;
+}
+
+message Sort {
+  Direction direction = 1;
+  repeated string properties = 2;
+}
+
+message PagingRequest {
+  int32 number = 1;
+  int32 size = 2;
+  optional Sort sorted = 3;
+  optional google.protobuf.Any query = 4;
+}
+
+message PagingResponse {
+  repeated google.protobuf.Any content = 1;
+  int32 totalPages = 2;
+  int64 totalElements = 3;
+  int32 size = 4;
+  int32 number = 5;
+  int32 numberOfElements = 6;
+  bool sorted = 7;
+}

@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package com.ribbontek.grpccourse;
+
+option java_multiple_files = true;
+option java_package = "com.ribbontek.grpccourse";
+
+message ShoppingCartItem {
+  string productId = 1;
+  uint32 quantity = 2;
+}
+
+message CreateShoppingCartSessionCommand {
+  string id = 1;
+}
+
+message CancelShoppingCartSessionCommand {
+  string id = 1;
+}
+
+message AddItemToShoppingCartCommand {
+  string id = 1;
+  ShoppingCartItem cartItem = 2;
+}
+
+message RemoveItemFromCartCommand {
+  string id = 1;
+  ShoppingCartItem cartItem = 2;
+}
+
+message ShoppingCartSession {
+  string sessionId = 1;
+  float total = 2;
+  string status = 3;
+  repeated ShoppingCartItem cartItems = 4;
+}

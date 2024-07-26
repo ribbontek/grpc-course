@@ -1,0 +1,51 @@
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+
+package com.ribbontek.grpccourse.admin;
+
+option java_multiple_files = true;
+option java_package = "com.ribbontek.grpccourse.admin";
+
+enum AssetType {
+  PRODUCT = 0;
+  GLOBAL = 1;
+}
+
+message UploadAssetCommand {
+  string name = 1;
+  bool multipart = 2;
+  optional uint32 partNumber = 3;
+  optional uint32 totalNumber = 4;
+  bytes content = 5;
+  AssetType assetType = 6;
+  string assetReference = 7;
+}
+
+message GetAssetCommand {
+  string name = 1;
+  AssetType assetType = 2;
+  string assetReference = 3;
+}
+
+message DeleteAssetCommand {
+  string name = 1;
+  AssetType assetType = 2;
+  string assetReference = 3;
+}
+
+message AdminAsset {
+  string name = 1;
+  bool multipart = 2;
+  optional uint32 partNumber = 3;
+  optional uint32 totalNumber = 4;
+  bytes content = 5;
+  AssetType assetType = 6;
+  optional string assetReference = 7;
+}
+
+// The Admin Asset Service
+service AdminAssetService {
+  rpc UploadAsset(stream UploadAssetCommand) returns (google.protobuf.Empty);
+  rpc GetAsset(GetAssetCommand) returns (stream AdminAsset);
+  rpc DeleteAsset(DeleteAssetCommand) returns (google.protobuf.Empty);
+}

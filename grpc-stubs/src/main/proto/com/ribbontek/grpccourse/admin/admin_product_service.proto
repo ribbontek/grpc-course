@@ -1,0 +1,104 @@
+syntax = "proto3";
+import "com/ribbontek/grpccourse/paging_models.proto";
+import "google/protobuf/empty.proto";
+
+package com.ribbontek.grpccourse.admin;
+
+option java_multiple_files = true;
+option java_package = "com.ribbontek.grpccourse.admin";
+
+message UpsertProductCommand {
+  string requestId = 1;
+  optional string discountCode = 2;
+  string categoryCode = 3;
+  string title = 4;
+  string description = 5;
+  uint64 quantity = 6;
+  float price = 7;
+  optional string sku = 8;
+}
+
+message UpsertCategoryCommand {
+  string code = 1;
+  string description = 2;
+}
+
+message UpsertDiscountCommand {
+  float amount = 1;
+  string code = 2;
+  string description = 3;
+  string expiresAtUtc = 4;
+}
+
+message AdminDiscountPagingQuery {
+  optional string codeLike = 1;
+  optional int32 amountRangeStart = 2;
+  optional int32 amountRangeEnd = 3;
+  optional bool expired = 4;
+  optional bool deleted = 5;
+}
+
+message AdminCategoryPagingQuery {
+  optional string codeLike = 1;
+  optional string descriptionLike = 2;
+}
+
+message AdminProductPagingQuery {
+  optional string titleLike = 1;
+  optional string descriptionLike = 2;
+  optional bool deleted = 3;
+  optional bool hasDiscount = 4;
+  optional bool hasStock = 5;
+  optional int32 priceRangeStart = 6;
+  optional int32 priceRangeEnd = 7;
+}
+
+message AdminDiscount {
+  float amount = 1;
+  string code = 2;
+  string expiresAtUtc = 3;
+  string createdAtUtc = 4;
+  string createdBy = 5;
+  optional string modifiedAtUtc = 6;
+  optional string modifiedBy = 7;
+}
+
+message AdminCategory {
+  string code = 1;
+  string description = 2;
+  string createdAtUtc = 7;
+  optional string modifiedAtUtc = 9;
+}
+
+message AdminProduct {
+  string requestId = 1;
+  optional string discountCode = 2;
+  string categoryCode = 3;
+  string title = 4;
+  string description = 5;
+  uint64 quantity = 6;
+  float price = 7;
+  bool deleted = 8;
+  optional string sku = 9;
+  string createdAtUtc = 10;
+  string createdBy = 11;
+  optional string modifiedAtUtc = 12;
+  optional string modifiedBy = 13;
+}
+
+// The Admin Product Service
+service AdminProductService {
+
+  rpc GetAdminPagedProducts(PagingRequest) returns (PagingResponse) {}
+
+  rpc GetAdminPagedDiscounts(PagingRequest) returns (PagingResponse) {}
+
+  rpc GetAdminPagedCategories(PagingRequest) returns (PagingResponse) {}
+
+  rpc UpsertDiscount(UpsertDiscountCommand) returns (AdminDiscount) {}
+
+  rpc UpsertCategory(UpsertCategoryCommand) returns (AdminCategory) {}
+
+  rpc UpsertProduct(UpsertProductCommand) returns (AdminProduct) {}
+}
+

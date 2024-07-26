@@ -1,0 +1,11 @@
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <property name="datetime.current" dbms="postgresql" value="localtimestamp"/>
+    <property name="datetime.now" dbms="postgresql" value="now() AT TIME ZONE 'UTC'"/>
+
+    <property name="uuid_type" value="uuid" dbms="postgresql"/>
+    <property name="uuid_function" value="uuid_generate_v4()" dbms="postgresql"/>
+
+    <include file="2023/changelog-2023.xml" relativeToChangelogFile="true"/>
+</databaseChangeLog>

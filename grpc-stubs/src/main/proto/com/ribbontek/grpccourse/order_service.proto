@@ -1,0 +1,18 @@
+syntax = "proto3";
+import "com/ribbontek/grpccourse/order_models.proto";
+
+package com.ribbontek.grpccourse;
+
+option java_multiple_files = true;
+option java_package = "com.ribbontek.grpccourse";
+
+// The Order Service
+service OrderService {
+
+  rpc ConvertShoppingCartToOrder(ShoppingCartToOrderCommand) returns (Order);
+
+  rpc AddAddresses(AddAddressesCommand) returns (Order);
+
+  rpc CompleteOrder(CompleteOrderCommand) returns (Order);
+}
+

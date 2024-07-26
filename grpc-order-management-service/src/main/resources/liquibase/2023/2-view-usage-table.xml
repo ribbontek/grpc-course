@@ -1,0 +1,40 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet id="ViewTableUsageView" author="joel.mouritz">
+        <createView viewName="vw_view_table_usage" replaceIfExists="true" schemaName="public">
+            SELECT DISTINCT current_database()::information_schema.sql_identifier AS view_catalog, nv.nspname::information_schema.sql_identifier         AS view_schema, v.relname::information_schema.sql_identifier          AS view_name, current_database()::information_schema.sql_identifier AS table_catalog, nt.nspname::information_schema.sql_identifier         AS table_schema, t.relname::information_schema.sql_identifier          AS table_name
+            FROM pg_namespace nv,
+                 pg_class v,
+                 pg_depend dv,
+                 pg_depend dt,
+                 pg_class t,
+                 pg_namespace nt
+            WHERE nv.oid = v.relnamespace
+              AND v.relkind = 'v'::"char"
+                AND v.oid = dv.refobjid
+                AND dv.refclassid = 'pg_class'::regclass::oid
+                AND dv.classid = 'pg_rewrite'::regclass::oid
+                AND dv.deptype = 'i'::"char"
+                AND dv.objid = dt.objid
+                AND dv.refobjid != dt.refobjid
+                AND dt.classid = 'pg_rewrite'::regclass::oid
+                AND dt.refclassid = 'pg_class'::regclass::oid
+                AND dt.refobjid = t.oid
+                AND t.relnamespace = nt.oid
+                AND (t.relkind = ANY (ARRAY ['r'::"char", 'v'::"char", 'f'::"char", 'p'::"char"]))
+                AND nv.nspname::information_schema.sql_identifier = 'grpccourse';
+        </createView>
+
+        <sql dbms="postgresql">
+            GRANT SELECT ON public.vw_view_table_usage TO grpccourse;
+        </sql>
+
+        <rollback>
+            <sql dbms="postgresql">
+                REVOKE SELECT ON public.vw_view_table_usage TO grpccourse;
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

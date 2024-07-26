@@ -1,0 +1,19 @@
+syntax = "proto3";
+import "com/ribbontek/grpccourse/product_models.proto";
+import "com/ribbontek/grpccourse/paging_models.proto";
+import "google/protobuf/empty.proto";
+
+package com.ribbontek.grpccourse;
+
+option java_multiple_files = true;
+option java_package = "com.ribbontek.grpccourse";
+
+// The Product Service
+service ProductService {
+
+  rpc GetProducts(google.protobuf.Empty) returns (stream Product);
+
+  rpc GetPagedProducts(PagingRequest) returns (PagingResponse);
+
+}
+

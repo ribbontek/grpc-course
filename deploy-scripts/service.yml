@@ -1,0 +1,346 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy a service on AWS Fargate, hosted in two public subnets and accessible via a public load balancer.
+  Derived from a template at https://github.com/nathanpeck/aws-cloudformation-fargate.
+Parameters:
+  NetworkStackName:
+    Type: String
+    Description: The name of the networking stack that
+      these resources are put into.
+  DatabaseStackName:
+    Type: String
+    Description: The name of the database stack with the database this service should connect to.
+  ServiceName:
+    Type: String
+    Description: A human-readable name for the service.
+  HealthCheckPath:
+    Type: String
+    Default: /health
+    Description: Path to perform the healthcheck on each instance.
+  HealthCheckIntervalSeconds:
+    Type: Number
+    Default: 5
+    Description: Number of seconds to wait between each health check.
+  ImageUrl:
+    Type: String
+    Description: The url of a docker image that will handle incoming traffic.
+  ContainerPort:
+    Type: Number
+    Default: 9090
+    Description: The port number the application inside the docker container
+      is binding to.
+  ContainerCpu:
+    Type: Number
+    Default: 1024
+    Description: How much CPU to give the container. 1024 is 1 CPU. 256 (.25 vCPU) Available memory values - 512 (0.5 GB), 1024 (1 GB), 2048 (2 GB)
+  ContainerMemory:
+    Type: Number
+    Default: 2048
+    Description: How much memory in megabytes to give the container.
+  Path:
+    Type: String
+    Default: "*"
+    Description: A path on the public load balancer that this service should be connected to.
+  DesiredCount:
+    Type: Number
+    Default: 1
+    Description: How many copies of the service task to run.
+  CognitoRegion:
+    Type: String
+    Description: "The region where Cognito is deployed"
+  CognitoPoolId:
+    Type: String
+    Description: "The Cognito User Pool ID"
+  CognitoClientId:
+    Type: String
+    Description: "The Cognito Client ID"
+  CognitoClientSecret:
+    Type: String
+    Description: "The Cognito Client Secret"
+  SesRegion:
+    Type: String
+    Description: "The region for SES"
+  SesSender:
+    Type: String
+    Description: "The SES sender email"
+  SesEmailUrlHeader:
+    Type: String
+    Description: "The SES email URL header"
+  SesEmailUrlUnsubscribe:
+    Type: String
+    Description: "The SES email URL unsubscribe"
+  SqsQueueComplaintEnabled:
+    Type: String
+    Description: "SQS Queue Complaint Enabled"
+  SqsQueueBounceEnabled:
+    Type: String
+    Description: "SQS Queue Bounce Enabled"
+  SqsQueueProcessorEnabled:
+    Type: String
+    Description: "SQS Queue Processor Enabled"
+  SqsQueueAuditEnabled:
+    Type: String
+    Description: "SQS Queue Audit Enabled"
+  SqsQueueComplaintUri:
+    Type: String
+    Description: "SQS Queue Complaint URI"
+  SqsQueueBounceUri:
+    Type: String
+    Description: "SQS Queue Bounce URI"
+  SqsQueueAuditFifoUri:
+    Type: String
+    Description: "SQS Queue Audit FIFO URI"
+  SqsQueueProcessorAsyncUri:
+    Type: String
+    Description: "SQS Queue Processor Async URI"
+  SqsQueueEmailRegion:
+    Type: String
+    Description: "SQS Queue Email Region"
+  SqsQueueGeneralRegion:
+    Type: String
+    Description: "SQS Queue General Region"
+  ComRibbontekS3Region:
+    Type: String
+    Description: "Ribbontek S3 Region"
+  ComRibbontekS3Bucket:
+    Type: String
+    Description: "Ribbontek S3 Bucket"
+  GrpcServerSecurityEnabled:
+    Type: String
+    Description: "Grpc Server Security Enabled"
+  GrpcServerSecurityCertificateChain:
+    Type: String
+    Description: "Grpc Server Security Certificate Chain"
+  GrpcServerSecurityPrivateKey:
+    Type: String
+    Description: "Grpc Server Security Private Key"
+
+Resources:
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: !Ref 'HealthCheckIntervalSeconds'
+      HealthCheckPath: !Ref 'HealthCheckPath'
+      HealthCheckProtocol: HTTPS
+      HealthCheckPort: !Ref 'ContainerPort'
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      Matcher:
+        GrpcCode: "0"
+      TargetType: ip
+      Name: !Ref 'ServiceName'
+      Port: !Ref 'ContainerPort'
+      Protocol: HTTPS
+      ProtocolVersion: GRPC
+      UnhealthyThresholdCount: 2
+      VpcId:
+        Fn::ImportValue:
+          !Join [ ':', [ !Ref 'NetworkStackName', 'VPCId' ] ]
+
+  LoadBalancerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - TargetGroupArn: !Ref 'TargetGroup'
+          Type: 'forward'
+      Conditions:
+        - Field: path-pattern
+          Values: [ !Ref 'Path' ]
+      ListenerArn:
+        Fn::ImportValue:
+          !Join [ ':', [ !Ref 'NetworkStackName', 'PublicListener' ] ]
+      Priority: 1
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Ref 'ServiceName'
+      RetentionInDays: 1
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref 'ServiceName'
+      Cpu: !Ref 'ContainerCpu'
+      Memory: !Ref 'ContainerMemory'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn:
+        Fn::ImportValue:
+          !Join [ ':', [ !Ref 'NetworkStackName', 'ECSTaskExecutionRole' ] ]
+      TaskRoleArn: !GetAtt FargateTaskRole.Arn
+      ContainerDefinitions:
+        - Name: !Ref 'ServiceName'
+          Cpu: !Ref 'ContainerCpu'
+          Memory: !Ref 'ContainerMemory'
+          Image: !Ref 'ImageUrl'
+          Environment:
+            - Name: GRPC_SERVER_PORT
+              Value: !Ref 'ContainerPort'
+            - Name: COGNITO_REGION
+              Value: !Ref 'CognitoRegion'
+            - Name: COGNITO_POOL_ID
+              Value: !Ref 'CognitoPoolId'
+            - Name: COGNITO_CLIENT_ID
+              Value: !Ref 'CognitoClientId'
+            - Name: COGNITO_CLIENT_SECRET
+              Value: !Ref 'CognitoClientSecret'
+            - Name: SES_REGION
+              Value: !Ref 'SesRegion'
+            - Name: SES_SENDER
+              Value: !Ref 'SesSender'
+            - Name: SES_EMAIL_URL_HEADER
+              Value: !Ref 'SesEmailUrlHeader'
+            - Name: SES_EMAIL_URL_UNSUBSCRIBE
+              Value: !Ref 'SesEmailUrlUnsubscribe'
+            - Name: SQS_QUEUE_COMPLAINT_ENABLED
+              Value: !Ref 'SqsQueueComplaintEnabled'
+            - Name: SQS_QUEUE_BOUNCE_ENABLED
+              Value: !Ref 'SqsQueueBounceEnabled'
+            - Name: SQS_QUEUE_PROCESSOR_ENABLED
+              Value: !Ref 'SqsQueueProcessorEnabled'
+            - Name: SQS_QUEUE_AUDIT_ENABLED
+              Value: !Ref 'SqsQueueAuditEnabled'
+            - Name: SQS_QUEUE_COMPLAINT_URI
+              Value: !Ref 'SqsQueueComplaintUri'
+            - Name: SQS_QUEUE_BOUNCE_URI
+              Value: !Ref 'SqsQueueBounceUri'
+            - Name: SQS_QUEUE_AUDIT_FIFO_URI
+              Value: !Ref 'SqsQueueAuditFifoUri'
+            - Name: SQS_QUEUE_PROCESSOR_ASYNC_URI
+              Value: !Ref 'SqsQueueProcessorAsyncUri'
+            - Name: SQS_QUEUE_EMAIL_REGION
+              Value: !Ref 'SqsQueueEmailRegion'
+            - Name: SQS_QUEUE_GENERAL_REGION
+              Value: !Ref 'SqsQueueGeneralRegion'
+            - Name: COM_RIBBONTEK_S3_REGION
+              Value: !Ref 'ComRibbontekS3Region'
+            - Name: COM_RIBBONTEK_S3_BUCKET
+              Value: !Ref 'ComRibbontekS3Bucket'
+            - Name: GRPC_SERVER_SECURITY_ENABLED
+              Value: !Ref 'GrpcServerSecurityEnabled'
+            - Name: GRPC_SERVER_SECURITY_CERTIFICATECHAIN
+              Value: !Ref 'GrpcServerSecurityCertificateChain'
+            - Name: GRPC_SERVER_SECURITY_PRIVATEKEY
+              Value: !Ref 'GrpcServerSecurityPrivateKey'
+            - Name: SPRING_LIQUIBASE_URL
+              Value: !Join
+                - ''
+                - - 'jdbc:postgresql://'
+                  - Fn::ImportValue: !Join [ ':', [ !Ref 'DatabaseStackName', 'EndpointAddress' ] ]
+                  - ':'
+                  - Fn::ImportValue: !Join [ ':', [ !Ref 'DatabaseStackName', 'EndpointPort' ] ]
+                  - '/'
+                  - Fn::ImportValue: !Join [ ':', [ !Ref 'DatabaseStackName', 'DBName' ] ]
+            - Name: SPRING_LIQUIBASE_USER
+              Value: !Join
+                - ''
+                - - '{{resolve:secretsmanager:'
+                  - Fn::ImportValue: !Join [ ':', [ !Ref 'DatabaseStackName', 'Secret' ] ]
+                  - ':SecretString:username}}'
+            - Name: SPRING_LIQUIBASE_PASSWORD
+              Value: !Join
+                - ''
+                - - '{{resolve:secretsmanager:'
+                  - Fn::ImportValue: !Join [ ':', [ !Ref 'DatabaseStackName', 'Secret' ] ]
+                  - ':SecretString:password}}'
+            - Name: SPRING_DATASOURCE_URL
+              Value: !Join
+                - ''
+                - - 'jdbc:postgresql://'
+                  - Fn::ImportValue: !Join [ ':', [ !Ref 'DatabaseStackName', 'EndpointAddress' ] ]
+                  - ':'
+                  - Fn::ImportValue: !Join [ ':', [ !Ref 'DatabaseStackName', 'EndpointPort' ] ]
+                  - '/'
+                  - Fn::ImportValue: !Join [ ':', [ !Ref 'DatabaseStackName', 'DBName' ] ]
+            - Name: SPRING_DATASOURCE_USERNAME
+              Value: !Join
+                - ''
+                - - '{{resolve:secretsmanager:'
+                  - Fn::ImportValue: !Join [ ':', [ !Ref 'DatabaseStackName', 'Secret' ] ]
+                  - ':SecretString:username}}'
+            - Name: SPRING_DATASOURCE_PASSWORD
+              Value: !Join
+                - ''
+                - - '{{resolve:secretsmanager:'
+                  - Fn::ImportValue: !Join [ ':', [ !Ref 'DatabaseStackName', 'Secret' ] ]
+                  - ':SecretString:password}}'
+          PortMappings:
+            - ContainerPort: !Ref 'ContainerPort'
+              Protocol: tcp
+              AppProtocol: grpc
+          LogConfiguration:
+            LogDriver: 'awslogs'
+            Options:
+              awslogs-group: !Ref 'ServiceName'
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: !Ref 'ServiceName'
+
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn: LoadBalancerRule
+    Properties:
+      ServiceName: !Ref 'ServiceName'
+      Cluster:
+        Fn::ImportValue:
+          !Join [ ':', [ !Ref 'NetworkStackName', 'ClusterName' ] ]
+      LaunchType: FARGATE
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 50
+      DesiredCount: !Ref 'DesiredCount'
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - Fn::ImportValue:
+                !Join [ ':', [ !Ref 'NetworkStackName', 'ECSSecurityGroup' ] ]
+          Subnets:
+            - Fn::ImportValue:
+                !Join [ ':', [ !Ref 'NetworkStackName', 'PublicSubnetOne' ] ]
+            - Fn::ImportValue:
+                !Join [ ':', [ !Ref 'NetworkStackName', 'PublicSubnetTwo' ] ]
+      TaskDefinition: !Ref 'TaskDefinition'
+      LoadBalancers:
+        - ContainerName: !Ref 'ServiceName'
+          ContainerPort: !Ref 'ContainerPort'
+          TargetGroupArn: !Ref 'TargetGroup'
+
+  # Define the IAM role that will be assumed by the Fargate task - GOD POWER MODE
+  FargateTaskRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service:
+                - 'ecs-tasks.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      Path: '/'
+      Policies:
+        - PolicyName: 'FargateTaskPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 's3:*'
+                Resource:
+                  - '*'
+              - Effect: 'Allow'
+                Action:
+                  - 'ses:*'
+                Resource: '*'
+              - Effect: 'Allow'
+                Action:
+                  - 'sqs:*'
+                Resource: '*'
+              - Effect: 'Allow'
+                Action:
+                  - 'cognito-idp:*'
+                Resource: '*'
+

@@ -1,0 +1,16 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: The name of the environment (e.g., dev, prod)
+    AllowedValues: [ dev, prod ]
+    Default: dev
+
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: "${EnvironmentName}-grpc-course"
+      AccessControl: Private

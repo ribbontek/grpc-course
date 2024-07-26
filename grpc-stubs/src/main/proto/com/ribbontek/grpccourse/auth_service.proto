@@ -1,0 +1,36 @@
+syntax = "proto3";
+import "com/ribbontek/grpccourse/auth_models.proto";
+import "google/protobuf/empty.proto";
+
+package com.ribbontek.grpccourse;
+
+option java_multiple_files = true;
+option java_package = "com.ribbontek.grpccourse";
+
+// The Authentication Service
+service AuthenticationService {
+  // Authenticates the user's details & returns JWT authentication
+  rpc Login(LoginUserCommand) returns (LoginResponse);
+
+  // Registers the user & password with the identity provider
+  rpc Register(RegisterUserCommand) returns (google.protobuf.Empty);
+
+  // Triggers the reset password flow for the user
+  rpc ResetPassword(google.protobuf.Empty) returns (google.protobuf.Empty);
+
+  // Confirms & associates the new password for the user
+  rpc ConfirmResetPassword(ResetPasswordCommand) returns (google.protobuf.Empty);
+
+  // Refreshes the access token & provides a new login response
+  rpc RefreshToken(RefreshTokenCommand) returns (LoginResponse);
+
+  // Turns on MFA for the user
+  rpc TurnOnMFA(google.protobuf.Empty) returns (TurnOnMfaResponse);
+
+  // Verifies MFA for the user
+  rpc VerifyMFA(VerifyMfaCommand) returns (google.protobuf.Empty);
+
+  // Turns off MFA for the user
+  rpc TurnOffMFA(google.protobuf.Empty) returns (google.protobuf.Empty);
+}
+
