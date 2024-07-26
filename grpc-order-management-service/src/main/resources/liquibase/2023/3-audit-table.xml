@@ -1,0 +1,38 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet id="CreateAuditTables" author="joel.mouritz">
+        <sql dbms="postgresql">
+            create type grpccourse.event_type_enum as enum ('CREATE', 'UPDATE', 'DELETE');
+        </sql>
+        <rollback>
+            drop type if exists grpccourse.event_type_enum;
+        </rollback>
+        <!-- AuditEntity -->
+        <createTable schemaName="grpccourse" tableName="audit">
+            <column name="audit_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_audit"/>
+            </column>
+            <column name="event_id" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="event" type="text"/>
+            <column name="type" type="grpccourse.event_type_enum">
+                <constraints nullable="false"/>
+            </column>
+            <column name="clazz" type="varchar(255)"/>
+            <column name="event_at_utc" type="timestamp(6)"/>
+        </createTable>
+
+        <sql dbms="postgresql">
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA grpccourse TO grpccourse;
+        </sql>
+
+        <rollback>
+            <sql dbms="postgresql">
+                REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA grpccourse from grpccourse;
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

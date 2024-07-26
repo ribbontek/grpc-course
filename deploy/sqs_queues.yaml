@@ -1,0 +1,29 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: The name of the environment (e.g., dev, prod)
+    AllowedValues: [dev, prod]
+    Default: dev
+
+Resources:
+  EngineFifoQueue:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      QueueName: !Sub "${EnvironmentName}-audit-fifo-queue.fifo"
+      FifoQueue: true
+
+  EngineAsyncQueue:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      QueueName: !Sub "${EnvironmentName}-processor-async-queue"
+
+Outputs:
+  EngineFifoQueueUrl:
+    Value: !GetAtt EngineFifoQueue.QueueUrl
+    Description: URL of the Auditing FIFO Queue
+
+  EngineAsyncQueueUrl:
+    Value: !GetAtt EngineAsyncQueue.QueueUrl
+    Description: URL of the Primary Processor Async Queue

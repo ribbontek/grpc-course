@@ -1,0 +1,675 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet id="AppDefaultScripts" author="joel.mouritz">
+        <sql dbms="postgresql">
+            create schema if not exists grpccourse;
+            alter schema grpccourse owner to grpccourse;
+            grant usage on schema grpccourse to grpccourse;
+            create extension if not exists "uuid-ossp";
+            drop type if exists grpccourse.role_type_enum cascade;
+            drop type if exists grpccourse.asset_type_enum cascade;
+            create type grpccourse.role_type_enum as enum ('STANDARD', 'ADMIN');
+            create type grpccourse.asset_type_enum as enum ('GLOBAL', 'PRODUCT');
+        </sql>
+        <rollback>
+            drop type if exists grpccourse.role_type_enum;
+            drop type if exists grpccourse.asset_type_enum;
+            drop schema if exists grpccourse;
+        </rollback>
+    </changeSet>
+
+    <changeSet id="CreateTables" author="joel.mouritz">
+        <!-- UserEntity -->
+        <createTable schemaName="grpccourse" tableName="user">
+            <column name="user_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_user"/>
+            </column>
+            <column name="email" type="varchar(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_user__email"/>
+            </column>
+            <column name="first_name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="idp_user_name" type="varchar(255)"/>
+            <column name="idp_status" type="varchar(255)"/>
+            <column name="mfa_enabled" type="Boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="mfa_login_required" type="Boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="mfa_login_attempts" type="SMALLINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="auth_code" type="varchar(6)"/>
+            <column name="locked" type="Boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="login_attempts" type="SMALLINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="email_bounced" type="Boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="email_complaint" type="Boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unsubscribed" type="Boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unsubscribe_code" type="varchar(8)"/>
+            <column name="deleted" type="Boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_at" type="timestamp(6)"/>
+        </createTable>
+
+        <createIndex indexName="ix_user_email" schemaName="grpccourse" tableName="user">
+            <column name="email"/>
+            <column name="deleted"/>
+        </createIndex>
+
+        <createIndex indexName="ix_user_idp_user_name" schemaName="grpccourse" tableName="user">
+            <column name="idp_user_name"/>
+            <column name="deleted"/>
+        </createIndex>
+
+        <!-- AddressTypeEntity -->
+        <createTable schemaName="grpccourse" tableName="address_type">
+            <column autoIncrement="true" name="address_type_id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_address_type"/>
+            </column>
+            <column name="code" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="varchar(1000)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_by" type="varchar(255)"/>
+            <column name="modified_at" type="timestamp(6)"/>
+            <column name="deleted" type="Boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <insert schemaName="grpccourse" tableName="address_type">
+            <column name="code">Residential</column>
+            <column name="description">The Residential Address of the User</column>
+            <column name="created_by">grpccourse</column>
+            <column name="created_at" valueDate="${datetime.now}"/>
+        </insert>
+
+        <insert schemaName="grpccourse" tableName="address_type">
+            <column name="code">Postal</column>
+            <column name="description">The Postal Address of the User</column>
+            <column name="created_by">grpccourse</column>
+            <column name="created_at" valueDate="${datetime.now}"/>
+        </insert>
+
+        <insert schemaName="grpccourse" tableName="address_type">
+            <column name="code">Delivery</column>
+            <column name="description">The Delivery Address for the Order</column>
+            <column name="created_by">grpccourse</column>
+            <column name="created_at" valueDate="${datetime.now}"/>
+        </insert>
+
+        <insert schemaName="grpccourse" tableName="address_type">
+            <column name="code">Billing</column>
+            <column name="description">The Billing Address for the Order</column>
+            <column name="created_by">grpccourse</column>
+            <column name="created_at" valueDate="${datetime.now}"/>
+        </insert>
+
+        <!-- UserAddressEntity -->
+        <createTable schemaName="grpccourse" tableName="user_address">
+            <column name="user_address_id" autoIncrement="true" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_user_address"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="address_type_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="line" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="suburb" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="state" type="varchar(25)"/>
+            <column name="postcode" type="varchar(15)"/>
+            <column name="country" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_at" type="timestamp(6)"/>
+        </createTable>
+
+        <addUniqueConstraint
+                constraintName="uq_user_address__user_id__address_type_id"
+                schemaName="grpccourse" tableName="user_address" columnNames="user_id, address_type_id"/>
+
+        <addForeignKeyConstraint
+                constraintName="fk_user_address__user"
+                baseTableSchemaName="grpccourse" baseTableName="user_address" baseColumnNames="user_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="user" referencedColumnNames="user_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <addForeignKeyConstraint
+                constraintName="fk_user_address__address_type"
+                baseTableSchemaName="grpccourse" baseTableName="user_address" baseColumnNames="address_type_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="address_type"
+                referencedColumnNames="address_type_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <!-- ShoppingCartSessionEntity -->
+        <createTable schemaName="grpccourse" tableName="shopping_cart_session">
+            <column name="shopping_cart_session_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_shopping_cart_session"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="shopping_cart_session_uuid" type="${uuid_type}">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="total" type="decimal(10, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_at" type="timestamp(6)"/>
+        </createTable>
+
+        <addForeignKeyConstraint
+                constraintName="fk_shopping_cart_session__user"
+                baseTableSchemaName="grpccourse" baseTableName="shopping_cart_session" baseColumnNames="user_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="user" referencedColumnNames="user_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <!-- ShoppingCartItemEntity -->
+        <createTable schemaName="grpccourse" tableName="shopping_cart_item">
+            <column name="shopping_cart_item_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_shopping_cart_item"/>
+            </column>
+            <column name="shopping_cart_session_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="product_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_at" type="timestamp(6)"/>
+        </createTable>
+
+        <addForeignKeyConstraint
+                constraintName="fk_shopping_cart_session__shopping_cart_item"
+                baseTableSchemaName="grpccourse" baseTableName="shopping_cart_item"
+                baseColumnNames="shopping_cart_session_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="shopping_cart_session"
+                referencedColumnNames="shopping_cart_session_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <!-- CategoryEntity -->
+        <createTable schemaName="grpccourse" tableName="category">
+            <column autoIncrement="true" name="category_id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_category"/>
+            </column>
+            <column name="code" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="varchar(1000)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_at" type="timestamp(6)"/>
+            <column name="deleted" type="Boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <insert schemaName="grpccourse" tableName="category">
+            <column name="code">CLOTHING</column>
+            <column name="description">Clothing</column>
+            <column name="created_at" valueDate="${datetime.now}"/>
+        </insert>
+
+        <insert schemaName="grpccourse" tableName="category">
+            <column name="code">FOOTWEAR</column>
+            <column name="description">Footwear</column>
+            <column name="created_at" valueDate="${datetime.now}"/>
+        </insert>
+
+        <insert schemaName="grpccourse" tableName="category">
+            <column name="code">COMPUTERS</column>
+            <column name="description">Computers</column>
+            <column name="created_at" valueDate="${datetime.now}"/>
+        </insert>
+
+        <insert schemaName="grpccourse" tableName="category">
+            <column name="code">COMPUTERS_SOFTWARE</column>
+            <column name="description">Software</column>
+            <column name="created_at" valueDate="${datetime.now}"/>
+        </insert>
+
+        <insert schemaName="grpccourse" tableName="category">
+            <column name="code">COMPUTERS_NETWORKING</column>
+            <column name="description">Networking</column>
+            <column name="created_at" valueDate="${datetime.now}"/>
+        </insert>
+
+        <!-- DiscountEntity -->
+        <createTable schemaName="grpccourse" tableName="discount">
+            <column autoIncrement="true" name="discount_id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_discount"/>
+            </column>
+            <column name="code" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="numeric">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expires_at" type="timestamp(6)"/>
+            <column name="created_by" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_by" type="varchar(255)"/>
+            <column name="modified_at" type="timestamp(6)"/>
+            <column name="deleted" type="Boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- ProductEntity -->
+        <createTable schemaName="grpccourse" tableName="product">
+            <column name="product_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_product"/>
+            </column>
+            <column name="product_uuid" type="${uuid_type}">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="discount_id" type="BIGINT"/>
+            <column name="category_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="title" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="varchar(1000)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="price" type="decimal(10, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sku" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deleted" type="Boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_by" type="varchar(255)"/>
+            <column name="modified_at" type="timestamp(6)"/>
+        </createTable>
+
+        <addForeignKeyConstraint
+                constraintName="fk_product__discount"
+                baseTableSchemaName="grpccourse" baseTableName="product" baseColumnNames="discount_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="discount" referencedColumnNames="discount_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <addForeignKeyConstraint
+                constraintName="fk_product__category"
+                baseTableSchemaName="grpccourse" baseTableName="product" baseColumnNames="category_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="category" referencedColumnNames="category_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <!-- PaymentEntity -->
+        <createTable schemaName="grpccourse" tableName="payment">
+            <column name="payment_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_payment"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="decimal(10, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="provider" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_at" type="timestamp(6)"/>
+        </createTable>
+
+        <addForeignKeyConstraint
+                constraintName="fk_payment__user"
+                baseTableSchemaName="grpccourse" baseTableName="payment" baseColumnNames="user_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="user" referencedColumnNames="user_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <!-- OrderEntity -->
+        <createTable schemaName="grpccourse" tableName="order">
+            <column name="order_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_order"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="payment_id" type="BIGINT"/>
+            <column name="order_session_uuid" type="${uuid_type}">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="total" type="decimal(10, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_at" type="timestamp(6)"/>
+        </createTable>
+
+        <addForeignKeyConstraint
+                constraintName="fk_order__user"
+                baseTableSchemaName="grpccourse" baseTableName="order" baseColumnNames="user_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="user" referencedColumnNames="user_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <addForeignKeyConstraint
+                constraintName="fk_order__payment"
+                baseTableSchemaName="grpccourse" baseTableName="order" baseColumnNames="payment_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="payment" referencedColumnNames="payment_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <!-- OrderAddressEntity -->
+        <createTable schemaName="grpccourse" tableName="order_address">
+            <column name="order_address_id" autoIncrement="true" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_order_address"/>
+            </column>
+            <column name="order_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="address_type_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="line" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="suburb" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="state" type="varchar(25)"/>
+            <column name="postcode" type="varchar(15)"/>
+            <column name="country" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_at" type="timestamp(6)"/>
+        </createTable>
+
+        <addUniqueConstraint
+                constraintName="ix_order_address__order_id__address_type_id"
+                schemaName="grpccourse" tableName="order_address" columnNames="order_id, address_type_id"/>
+
+        <addForeignKeyConstraint
+                constraintName="fk_order_address__order"
+                baseTableSchemaName="grpccourse" baseTableName="order_address" baseColumnNames="order_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="order" referencedColumnNames="order_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <addForeignKeyConstraint
+                constraintName="fk_order_address__address_type"
+                baseTableSchemaName="grpccourse" baseTableName="order_address" baseColumnNames="address_type_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="address_type"
+                referencedColumnNames="address_type_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <!-- OrderItemEntity -->
+        <createTable schemaName="grpccourse" tableName="order_item">
+            <column name="order_item_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_order_item"/>
+            </column>
+            <column name="order_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="product_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="price" type="decimal(10, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_at" type="timestamp(6)"/>
+        </createTable>
+
+        <addForeignKeyConstraint
+                constraintName="fk_order_item__order"
+                baseTableSchemaName="grpccourse" baseTableName="order_item" baseColumnNames="order_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="order" referencedColumnNames="order_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <addForeignKeyConstraint
+                constraintName="fk_order_item__product"
+                baseTableSchemaName="grpccourse" baseTableName="order_item" baseColumnNames="product_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="product" referencedColumnNames="product_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <createView viewName="vw_user" replaceIfExists="true" schemaName="grpccourse">
+            SELECT *
+            FROM grpccourse.user
+            where deleted = false;
+        </createView>
+
+        <createTable schemaName="grpccourse" tableName="role">
+            <column name="role_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_role"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="role_type" type="grpccourse.role_type_enum">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_at" type="timestamp(6)"/>
+        </createTable>
+
+        <addForeignKeyConstraint
+                constraintName="fk_user__role"
+                baseTableSchemaName="grpccourse" baseTableName="role" baseColumnNames="user_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="user" referencedColumnNames="user_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <createTable schemaName="grpccourse" tableName="policy">
+            <column name="policy_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_policy"/>
+            </column>
+            <column name="permission" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_at" type="timestamp(6)"/>
+        </createTable>
+
+        <!-- ManyToMany Mapping Table RoleToPolicy -->
+        <createTable schemaName="grpccourse" tableName="role_to_policy">
+            <column name="role_to_policy_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_role_to_policy"/>
+            </column>
+            <column name="role_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="policy_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+                constraintName="fk_role_to_policy__role"
+                baseTableSchemaName="grpccourse" baseTableName="role_to_policy" baseColumnNames="role_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="role" referencedColumnNames="role_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <addForeignKeyConstraint
+                constraintName="fk_role_to_policy__policy"
+                baseTableSchemaName="grpccourse" baseTableName="role_to_policy" baseColumnNames="policy_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="policy" referencedColumnNames="policy_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+    </changeSet>
+
+    <changeSet author="joel.mouritz" id="user_has_role_function">
+        <sql splitStatements="false">
+            create or replace function grpccourse.has_role(
+                    in userId bigint,
+                    in roleType varchar
+                )
+                returns boolean as
+            $$
+            begin
+            return exists (select 1
+                           from grpccourse.role r
+                           where r.user_id = userId
+                             and r.role_type = roleType::role_type_enum);
+            end;
+            $$
+            language plpgsql;
+        </sql>
+        <rollback>
+            drop function if exists grpccourse.has_role;
+        </rollback>
+    </changeSet>
+
+    <changeSet author="joel.mouritz" id="scheduled_job_lock_table">
+        <createTable schemaName="grpccourse" tableName="scheduled_job_lock">
+            <column name="scheduled_job_lock_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_scheduled_job_lock"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_scheduled_job_lock_name"/>
+            </column>
+            <column name="locked" type="Boolean" defaultValueComputed="false">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex indexName="ix_scheduled_job_lock_name" schemaName="grpccourse" tableName="scheduled_job_lock">
+            <column name="name"/>
+            <column name="locked"/>
+        </createIndex>
+        <insert schemaName="grpccourse" tableName="scheduled_job_lock">
+            <column name="name">expire_shopping_carts_job</column>
+        </insert>
+    </changeSet>
+
+    <changeSet author="joel.mouritz" id="create_asset_table">
+        <createTable schemaName="grpccourse" tableName="asset">
+            <column name="asset_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_asset"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="multipart" type="Boolean" defaultValueComputed="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="part_number" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_number" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="asset_type" type="grpccourse.asset_type_enum">
+                <constraints nullable="false"/>
+            </column>
+            <column name="asset_reference" type="varchar(255)"/>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_at" type="timestamp(6)"/>
+            <column name="deleted" type="Boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex indexName="asset_type_reference_ix" schemaName="grpccourse" tableName="asset">
+            <column name="asset_type"/>
+            <column name="asset_reference"/>
+        </createIndex>
+        <createView viewName="vw_asset" replaceIfExists="true" schemaName="grpccourse">
+            SELECT *
+            FROM grpccourse.asset
+            where deleted = false;
+        </createView>
+    </changeSet>
+
+    <changeSet author="joel.mouritz" id="AddPermissions">
+        <sql dbms="postgresql">
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA grpccourse TO grpccourse;
+        </sql>
+
+        <rollback>
+            <sql dbms="postgresql">
+                REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA grpccourse from grpccourse;
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,21 @@
+syntax = "proto3";
+import "google/protobuf/any.proto";
+
+package com.ribbontek.grpccourse.event;
+
+option java_multiple_files = true;
+option java_package = "com.ribbontek.grpccourse.event";
+
+enum EventType {
+  REGISTER_USER = 0;
+  REPORT_BOUNCED_EMAIL = 1;
+  REPORT_COMPLAINT_EMAIL = 2;
+}
+
+// The async domain event
+message AsyncDomainEvent {
+  EventType type = 1;
+  optional string data = 2;
+}
+
+

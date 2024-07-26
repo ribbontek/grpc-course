@@ -1,0 +1,24 @@
+syntax = "proto3";
+import "google/protobuf/any.proto";
+
+package com.ribbontek.grpccourse.audit;
+
+option java_multiple_files = true;
+option java_package = "com.ribbontek.grpccourse.audit";
+
+enum AuditEventType {
+  CREATE = 0;
+  UPDATE = 1;
+  DELETE = 2;
+}
+
+// The audit event
+message AuditEvent {
+  AuditEventType type = 1;
+  string id = 2;
+  optional string event = 3;
+  string clazz = 4;
+  string eventAtUtc = 5;
+}
+
+

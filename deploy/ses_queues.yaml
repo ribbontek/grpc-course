@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Resources:
+  GrpcCourseBounceSNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref BounceTopic
+      PolicyDocument:
+        Id: "GrpcCourseBounceSNSTopicPolicy"
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ses.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref BounceTopic
+
+  GrpcCourseComplaintSNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref ComplaintTopic
+      PolicyDocument:
+        Id: "GrpcCourseComplaintSNSTopicPolicy"
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ses.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref ComplaintTopic
+
+  GrpcCourseSQSQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref BounceQueue
+        - !Ref ComplaintQueue
+      PolicyDocument:
+        Id: "GrpcCourseSQSQueuePolicy"
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt BounceQueue.Arn
+            Condition:
+              ArnEquals:
+                "aws:SourceArn": !Ref BounceTopic
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt ComplaintQueue.Arn
+            Condition:
+              ArnEquals:
+                "aws:SourceArn": !Ref ComplaintTopic
+
+  BounceQueue:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      QueueName: BounceQueue
+
+  ComplaintQueue:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      QueueName: ComplaintQueue
+
+  SESConfigurationSet:
+    Type: "AWS::SES::ConfigurationSet"
+    Properties:
+      Name: GrpcCourseSESConfigurationSet
+
+  BounceTopic:
+    Type: "AWS::SNS::Topic"
+    Properties:
+      DisplayName: "BounceTopic"
+
+  ComplaintTopic:
+    Type: "AWS::SNS::Topic"
+    Properties:
+      DisplayName: "ComplaintTopic"
+
+  BounceSubscription:
+    Type: "AWS::SNS::Subscription"
+    Properties:
+      Protocol: "sqs"
+      TopicArn: !Ref BounceTopic
+      Endpoint: !GetAtt BounceQueue.Arn
+
+  ComplaintSubscription:
+    Type: "AWS::SNS::Subscription"
+    Properties:
+      Protocol: "sqs"
+      TopicArn: !Ref ComplaintTopic
+      Endpoint: !GetAtt ComplaintQueue.Arn
+
+  SESConfigurationSetEventDestinationBounce:
+    Type: "AWS::SES::ConfigurationSetEventDestination"
+    Properties:
+      ConfigurationSetName: !Ref SESConfigurationSet
+      EventDestination:
+        Name: "BounceDestination"
+        Enabled: True
+        MatchingEventTypes:
+          - "bounce"
+        SnsDestination:
+          TopicARN: !Ref BounceTopic
+
+  SESConfigurationSetEventDestinationComplaint:
+    Type: "AWS::SES::ConfigurationSetEventDestination"
+    Properties:
+      ConfigurationSetName: !Ref SESConfigurationSet
+      EventDestination:
+        Name: "ComplaintDestination"
+        Enabled: True
+        MatchingEventTypes:
+          - "complaint"
+        SnsDestination:
+          TopicARN: !Ref ComplaintTopic
+
+

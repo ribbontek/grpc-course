@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package com.ribbontek.grpccourse;
+
+option java_multiple_files = true;
+option java_package = "com.ribbontek.grpccourse";
+
+// The login user command containing the user's authentication
+message LoginUserCommand {
+  string username = 1;
+  string password = 2;
+}
+
+// The login response message containing the token details
+message LoginResponse {
+  string accessToken = 1;
+  string idToken = 2;
+  string refreshToken = 3;
+  int32 expiresIn = 4;
+  string tokenType = 5;
+}
+
+// the register user command containing the user's registration details
+message RegisterUserCommand {
+  string email = 1;
+  string password = 2;
+  string firstName = 3;
+  string lastName = 4;
+}
+
+message ResetPasswordCommand {
+  string email = 1;
+  string password = 2;
+  string code = 3;
+}
+
+message RefreshTokenCommand {
+  string refreshToken = 2;
+}
+
+message VerifyMfaCommand {
+  string totpCode = 1;
+}
+
+message TurnOnMfaResponse {
+  string qrCode = 1;
+}
+
+

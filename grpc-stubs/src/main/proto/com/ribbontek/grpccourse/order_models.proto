@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package com.ribbontek.grpccourse;
+
+option java_multiple_files = true;
+option java_package = "com.ribbontek.grpccourse";
+
+enum OrderAddressType {
+  DELIVERY = 0;
+  BILLING = 1;
+}
+
+message OrderAddress {
+  OrderAddressType addressType = 1;
+  string line = 2;
+  string suburb = 3;
+  optional string state = 4;
+  optional string postcode = 5;
+  string country = 6;
+}
+
+message OrderItem {
+  string productId = 1;
+  uint32 quantity = 2;
+}
+
+message Payment {
+  float amount = 1;
+  string provider = 2;
+  string reference = 4;
+}
+
+message ShoppingCartToOrderCommand {
+  string id = 1;
+}
+
+message AddAddressesCommand {
+  string id = 1;
+  repeated OrderAddress address = 2;
+}
+
+message CompleteOrderCommand {
+  string id = 1;
+  Payment payment = 2;
+}
+
+message Order {
+  string sessionId = 1;
+  float total = 2;
+  string status = 3;
+  optional Payment payment = 4;
+  repeated OrderItem orderItems = 5;
+  repeated OrderAddress orderAddresses = 6;
+}

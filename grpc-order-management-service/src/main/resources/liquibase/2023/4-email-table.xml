@@ -1,0 +1,63 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet id="CreateEmailTables" author="joel.mouritz">
+        <sql dbms="postgresql">
+            create type grpccourse.email_status_enum as enum ('SUCCESS', 'FAILURE', 'IN_PROGRESS', 'BOUNCE', 'COMPLAINT');
+        </sql>
+        <rollback>
+            drop type if exists grpccourse.email_status_enum;
+        </rollback>
+        <!-- EmailEntity -->
+        <createTable schemaName="grpccourse" tableName="email">
+            <column name="email_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_email"/>
+            </column>
+            <column name="template_name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="from_email" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="to_email" type="varchar(255)" />
+            <column name="message_id" type="varchar(255)"/>
+            <column name="status" type="grpccourse.email_status_enum">
+                <constraints nullable="false"/>
+            </column>
+            <column name="email_error_id" type="BIGINT"/>
+            <column name="created_at" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_at" type="timestamp(6)"/>
+        </createTable>
+        <!-- EmailErrorEntity -->
+        <createTable schemaName="grpccourse" tableName="email_error">
+            <column name="email_error_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_email_error"/>
+            </column>
+            <column name="error_message" type="varchar(1000)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+                constraintName="fk_email_error_to_email__email_error"
+                baseTableSchemaName="grpccourse" baseTableName="email" baseColumnNames="email_error_id"
+                referencedTableSchemaName="grpccourse" referencedTableName="email_error" referencedColumnNames="email_error_id"
+                deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION"/>
+
+        <sql dbms="postgresql">
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA grpccourse TO grpccourse;
+        </sql>
+
+        <rollback>
+            <sql dbms="postgresql">
+                REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA grpccourse from grpccourse;
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

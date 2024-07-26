@@ -1,0 +1,42 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/liquibase/2022/1-create-tables.xml"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet id="SesNotificationTable" author="joel.mouritz">
+        <!-- SesNotificationEntity -->
+        <createTable schemaName="grpccourse" tableName="ses_notification">
+            <column name="ses_notification_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_ses_notification"/>
+            </column>
+            <column name="type" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="message_id" type="varchar(60)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="subject" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="message" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ses_message_id" type="varchar(60)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="timestamp" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql dbms="postgresql">
+            GRANT ALL ON grpccourse.ses_notification TO grpccourse;
+        </sql>
+
+        <rollback>
+            <sql dbms="postgresql">
+                REVOKE ALL ON grpccourse.ses_notification from grpccourse;
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,9 @@
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <include file="1-create-tables.xml" relativeToChangelogFile="true"/>
+    <include file="2-view-usage-table.xml" relativeToChangelogFile="true"/>
+    <include file="3-audit-table.xml" relativeToChangelogFile="true"/>
+    <include file="4-email-table.xml" relativeToChangelogFile="true"/>
+    <include file="5-ses-notification-table.xml" relativeToChangelogFile="true"/>
+</databaseChangeLog>
